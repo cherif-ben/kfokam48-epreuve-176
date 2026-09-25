@@ -1,5 +1,6 @@
 package com.kfokam48.backend.service;
 
+import com.kfokam48.backend.dto.CloturerSessionResponse;
 import com.kfokam48.backend.dto.OuvrirSessionRequest;
 import com.kfokam48.backend.dto.SessionDetailResponse;
 import com.kfokam48.backend.dto.SessionResponse;
@@ -8,6 +9,7 @@ import com.kfokam48.backend.entity.Promotion;
 import com.kfokam48.backend.entity.Session;
 import com.kfokam48.backend.erreur.FormateurInconnuException;
 import com.kfokam48.backend.erreur.PromotionInconnueException;
+import com.kfokam48.backend.erreur.SessionDejaClotureeException;
 import com.kfokam48.backend.erreur.SessionInconnueException;
 import com.kfokam48.backend.repository.FormateurRepository;
 import com.kfokam48.backend.repository.PromotionRepository;
@@ -106,6 +108,28 @@ public class SessionService {
       sessions = sessionRepository.findAllByOrderByOuvertureAtDesc();
     }
     return sessions.stream().map(SessionDetailResponse::depuis).toList();
+  }
+
+  /**
+   * EF11 / RG14 (Q3) — clôture une session : {@code clotureAt = now()}. Après clôture, toutes les
+   * opérations sont verrouillées : présence → 410 {@code CODE_EXPIRE}, dépôt → 409
+   * {@code SESSION_CLOTUREE}, relecture → 409 {@code RELECTURE_DEJA_RENDUE} (RG12 : la note
+   * devient définitive).
+   *
+   * <p>C'est le « trou comblé » documenté en §7 du cahier des charges.
+   */
+  @Transactional
+  public CloturerSessionResponse cloturer(Long id) {
+    Session session =
+        sessionRepository.findById(id).orElseThrow(SessionInconnueException::new);
+    if (session.estCloturee()) {
+      // Clôture définitive : une seconde demande est un conflit (409).
+      throw new SessionDejaClotureeException();
+    }
+    LocalDateTime clotureAt = LocalDateTime.now(horloge);
+    session.cloturer(clotureAt);
+    sessionRepository.save(session);
+    return CloturerSessionResponse.depuis(session.getId(), clotureAt);
   }
 
   private String genererCodeUnique() {

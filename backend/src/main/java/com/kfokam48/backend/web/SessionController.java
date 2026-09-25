@@ -1,5 +1,6 @@
 package com.kfokam48.backend.web;
 
+import com.kfokam48.backend.dto.CloturerSessionResponse;
 import com.kfokam48.backend.dto.OuvrirSessionRequest;
 import com.kfokam48.backend.dto.SessionDetailResponse;
 import com.kfokam48.backend.dto.SessionResponse;
@@ -8,6 +9,7 @@ import jakarta.validation.Valid;
 import java.util.List;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -38,8 +40,12 @@ public class SessionController {
     return sessionService.trouver(id);
   }
 
-  @GetMapping
-  public List<SessionDetailResponse> lister(
+  @PatchMapping("/{id}/cloture")
+  public CloturerSessionResponse cloturer(@PathVariable Long id) {
+    return sessionService.cloturer(id);
+  }
+
+  @GetMapping  public List<SessionDetailResponse> lister(
       @RequestParam(required = false) Long promotionId,
       @RequestParam(required = false) Long formateurId) {
     return sessionService.lister(promotionId, formateurId);
