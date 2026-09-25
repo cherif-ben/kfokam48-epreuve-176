@@ -10,6 +10,8 @@ import com.kfokam48.backend.erreur.CodeExpireException;
 import com.kfokam48.backend.erreur.CodeInconnuException;
 import com.kfokam48.backend.erreur.DejaPresentException;
 import com.kfokam48.backend.erreur.EtudiantInconnuException;
+import com.kfokam48.backend.erreur.PresenceSessionClotureeException;
+import com.kfokam48.backend.erreur.SessionInconnueException;
 import com.kfokam48.backend.repository.EtudiantRepository;
 import com.kfokam48.backend.repository.PresenceRepository;
 import com.kfokam48.backend.repository.SessionRepository;
@@ -75,5 +77,30 @@ public class PresenceService {
     SourcePresence source =
         requete.source() != null ? requete.source() : SourcePresence.ETUDIANT;
     return marquer(requete, source);
+  }
+
+  /**
+   * EF5 / RG11 — le formateur ajoute manuellement la présence d'un étudiant sur une session
+   * (source {@code FORMATEUR}, Q14). L'unicité (session, étudiant) s'applique quelle que soit la
+   * source (RG12) et la session clôturée verrouille l'ajout (RG14).
+   */
+  @Transactional
+  public PresenceResponse ajouterPresenceFormateur(Long sessionId, Long etudiantId) {
+    Session session =
+        sessionRepository.findById(sessionId).orElseThrow(SessionInconnueException::new);
+    if (session.estCloturee()) {
+      // Contrat §/api/sessions/{id}/presences : 410 SESSION_CLOTUREE après clôture (RG14).
+      throw new PresenceSessionClotureeException();
+    }
+    Etudiant etudiant =
+        etudiantRepository.findById(etudiantId).orElseThrow(EtudiantInconnuException::new);
+    if (presenceRepository.existsBySessionIdAndEtudiantId(session.getId(), etudiant.getId())) {
+      // RG12 : une seule présence par couple (session, étudiant), quelle que soit la source.
+      throw new DejaPresentException();
+    }
+    Presence presence =
+        presenceRepository.save(
+            new Presence(session.getId(), etudiant.getId(), SourcePresence.FORMATEUR, LocalDateTime.now(horloge)));
+    return PresenceResponse.depuis(presence);
   }
 }

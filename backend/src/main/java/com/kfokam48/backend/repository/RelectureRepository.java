@@ -15,6 +15,9 @@ public interface RelectureRepository extends JpaRepository<Relecture, Long> {
 
   boolean existsByExerciceId(Long exerciceId);
 
+  /** EF8 — relectures assignées à un relecteur (liste « mes relectures » du front). */
+  List<Relecture> findByRelecteurId(Long relecteurId);
+
   /** EF12 (Q16) — moyenne des notes rendues par étudiant, pour les exercices d'une promotion. */
   @Query(
       "SELECT ex.etudiantId, AVG(r.note) "
