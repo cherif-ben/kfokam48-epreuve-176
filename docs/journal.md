@@ -6,6 +6,7 @@ Une entrée par ticket, dans l'ordre de traitement : branche, PR (qui ferme l'is
 
 | Ticket | Titre | Branche | PR |
 | --- | --- | --- | --- |
+| #16 | [Backend] US-2 Marquer sa présence avec un code | `feat/16-backend-marquer-presence` | #40 |
 | #24 | [Backend] US-12 Gestion centralisée des erreurs (B4) | `feat/24-gestion-erreurs` | #38 |
 | #14 | [Backend] US-1 Ouvrir une session et générer un code de présence | `feat/14-backend-ouvrir-session` | #39 |
 | #25 | [Backend] US-13 Migrations Flyway V1 — schéma initial (B5) | `feat/25-flyway-v1-schema` | #37 |
@@ -92,3 +93,24 @@ Une entrée par ticket, dans l'ordre de traitement : branche, PR (qui ferme l'is
   `com.fasterxml.jackson.databind` n'est plus sur le classpath. Les tests s'appuient donc sur
   `jsonPath` plutôt que sur un `ObjectMapper`.
 
+---
+
+## #16 — [Backend] US-2 Marquer sa présence avec un code
+
+- **Branche** : `feat/16-backend-marquer-presence` · **Commit** : `59a2ece` · **PR** : #40 (fusionnée) — issue fermée.
+- **Fait** :
+  - `POST /api/presences` `{ code, etudiantId }` → **201** `{ id, sessionId, etudiantId, source }`,
+    `source = ETUDIANT`. Schéma imposé respecté à la lettre (aucun champ ajouté).
+  - Ordre de vérification imposé par le ticket : `CODE_INCONNU` (400) → `CODE_EXPIRE` (410) →
+    `ETUDIANT_INCONNU` (404) → `DEJA_PRESENT` (409).
+  - **RG1 (Q2)** : validité de 15 min ; **RG14 (Q3)** : après clôture, le marquage renvoie 410
+    `CODE_EXPIRE` ; **RG12** : unicité du couple (session, étudiant) vérifiée en service **et** par la
+    contrainte `UNIQUE(session_id, etudiant_id)` de `V1`.
+  - Entité `Presence` + enum `SourcePresence` (`ETUDIANT` | `FORMATEUR`) + `PresenceRepository`.
+  - Le code saisi est normalisé (`trim` + majuscules) côté API : le front n'a aucune règle à dupliquer.
+- **Preuve** : `./mvnw -o -B test` → `BUILD SUCCESS`, **24 tests verts** dont
+  `PresenceServiceTest` (5 cas : nominal, code expiré, session clôturée, code inconnu, doublon) et
+  `PresenceControllerIT` (201 `source=ETUDIANT`, 409 `DEJA_PRESENT`, 410 `CODE_EXPIRE` au format
+  `{code, message}`, 400 `CODE_INCONNU`, 410 après clôture + aucune ligne insérée).
+- **Note tests** : les entités non persistées ont un `id` nul — les stubs Mockito utilisent donc
+  `any()` plutôt que des identifiants littéraux (le mode strict de Mockito l'a signalé).
