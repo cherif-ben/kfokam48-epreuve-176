@@ -1,0 +1,9 @@
+# Profil utilisé dans le conteneur Docker (docker-compose.yml)
+spring:
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://db:5432/kfokam48}
+    username: ${SPRING_DATASOURCE_USERNAME:kfokam48}
+    password: ${SPRING_DATASOURCE_PASSWORD:kfokam48}
+  jpa:
+    hibernate:
+      ddl-auto: validate

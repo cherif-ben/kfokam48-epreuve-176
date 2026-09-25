@@ -4,12 +4,17 @@ target/
 .mvn/wrapper/maven-wrapper.jar
 !.mvn/wrapper/maven-wrapper.properties
 
-# Node
+# Node / Next.js
 node_modules/
 dist/
 build/
+.next/
+out/
+next-env.d.ts
+*.tsbuildinfo
 .env
 .env.local
+.env*.local
 
 # IDE
 .idea/

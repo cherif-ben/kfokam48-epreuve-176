@@ -1,0 +1,16 @@
+spring:
+  application:
+    name: kfokam48-backend
+  datasource:
+    url: jdbc:postgresql://localhost:5432/kfokam48
+    username: kfokam48
+    password: kfokam48
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+  flyway:
+    enabled: true
+
+server:
+  port: 8080
