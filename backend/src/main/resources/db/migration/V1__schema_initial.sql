@@ -65,3 +65,9 @@ CREATE INDEX idx_etudiant_promotion ON etudiant (promotion_id);
 CREATE INDEX idx_presence_session ON presence (session_id);
 CREATE INDEX idx_exercice_etudiant ON exercice (etudiant_id);
 CREATE INDEX idx_relecture_relecteur ON relecture (relecteur_id);
+
+-- Index manquants sur les autres clés étrangères (US-13 : « Index sur les FK et session.code »).
+-- session.code est déjà indexé par sa contrainte UNIQUE ; relecture.exercice_id par UNIQUE(exercice_id).
+CREATE INDEX idx_session_formateur ON session (formateur_id);
+CREATE INDEX idx_presence_etudiant ON presence (etudiant_id);
+CREATE INDEX idx_exercice_session ON exercice (session_id);
