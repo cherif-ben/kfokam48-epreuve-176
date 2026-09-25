@@ -69,9 +69,11 @@ public class PresenceService {
     return PresenceResponse.depuis(presence);
   }
 
-  /** EF2 — marquage par l'étudiant lui-même (source {@code ETUDIANT}). */
+  /** EF5 / RG11 (Q14) — marquage par un étudiant ou par le formateur (source {@code FORMATEUR}). */
   @Transactional
   public PresenceResponse marquerParEtudiant(MarquerPresenceRequest requete) {
-    return marquer(requete, SourcePresence.ETUDIANT);
+    SourcePresence source =
+        requete.source() != null ? requete.source() : SourcePresence.ETUDIANT;
+    return marquer(requete, source);
   }
 }

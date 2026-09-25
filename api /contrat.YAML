@@ -60,6 +60,9 @@ paths:
               properties:
                 code: { type: string }
                 etudiantId: { type: integer, format: int64 }
+                # EF5 / RG11 (Q14) : champ optionnel ajouté par le ticket #20 —
+                # absent, la source vaut ETUDIANT ; FORMATEUR = présence ajoutée manuellement.
+                source: { type: string, enum: [ETUDIANT, FORMATEUR] }
       responses:
         "201":
           description: Présence enregistrée
