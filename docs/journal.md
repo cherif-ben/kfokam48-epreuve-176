@@ -6,11 +6,46 @@ Une entrée par ticket, dans l'ordre de traitement : branche, PR (qui ferme l'is
 
 | Ticket | Titre | Branche | PR |
 | --- | --- | --- | --- |
+| #23 | [Backend] US-11 Bloquer temporairement après 5 échecs de code | `feat/23-backend-blocage-code` | #42 |
 | #16 | [Backend] US-2 Marquer sa présence avec un code | `feat/16-backend-marquer-presence` | #40 |
 | #24 | [Backend] US-12 Gestion centralisée des erreurs (B4) | `feat/24-gestion-erreurs` | #38 |
 | #14 | [Backend] US-1 Ouvrir une session et générer un code de présence | `feat/14-backend-ouvrir-session` | #39 |
 | #25 | [Backend] US-13 Migrations Flyway V1 — schéma initial (B5) | `feat/25-flyway-v1-schema` | #37 |
 | #15 | [Backend] US-3 Déposer le lien de son exercice | `feat/15-backend-deposer-exercice` | #41 |
+
+---
+
+## #23 — [Backend] US-11 Bloquer temporairement après 5 échecs de code (RG13, Q4)
+
+- **Branche** : `feat/23-backend-blocage-code` · **Commit** : `5b20678` · **PR** : #42 — issue fermée.
+- **Fait** :
+  - Table `tentative_code` (Flyway `V3`) : `session_id`, `etudiant_id` (FK vers `session`/`etudiant`),
+    `echecs INTEGER NOT NULL DEFAULT 0`, `blocage_jusqua TIMESTAMP`, `dernier_echec TIMESTAMP`,
+    `created_at`, `updated_at` + contrainte `UNIQUE(session_id, etudiant_id)` (le blocage est
+    propre à chaque couple, pas global) et 3 index (`session_id`, `etudiant_id`, `blocage_jusqua`).
+  - Entité `TentativeCode` (RG13) : constantes `SEUIL_ECHECS = 5` et `DELAI_BLOCAGE = 2 min`.
+    `estBloquee(now)` → true si `blocageJusqua > now`. `enregistrerEchec(now)` incrémente le
+    compteur et pose `blocageJusqua = now + 2 min` au 5e échec. `reinitialiser(now)` remet
+    `echecs = 0` et `blocageJusqua = null`.
+  - `TentativeCodeRepository` : `findBySessionIdAndEtudiantId` + `reinitialiser` (UPDATE ciblé,
+    pas de suppression de ligne — le compteur est réinitialisé, pas recréé).
+  - `PresenceService` : le blocage est vérifié **avant** tout traitement, une fois la session
+    identifiée (après `findByCode`). Chaque échec (code expiré, session clôturée, étudiant
+    inconnu, déjà présent) appelle `enregistrerEchec`. Une saisie réussie appelle `reinitialiser`.
+    Aucun endpoint nouveau : le contrat impose déjà `POST /api/presences`.
+  - `TropDeTentativesException` (déjà existante, ticket #24) → **429** `TROP_DE_TENTATIVES` avec le
+    nombre de secondes restantes dans le message.
+- **Décision technique** : stockage en base (`tentative_code`) et non cache in-memory. Justification
+  (Cahier des charges §7, Q4) : le blocage doit survivre un redémarrage du serveur et être isolé par
+  couple (étudiant, session) — une table avec `UNIQUE(session_id, etudiant_id)` donne ces deux
+  garanties sans état partagé à gérer. Le `Clock` injectable (`ConfigurationHorloge`) rend RG13
+  testable sans attente réelle.
+- **Preuve** : `mvn -B test` → `BUILD SUCCESS`, **36 tests verts** dont
+  `PresenceServiceTest` (7 cas : nominal, code expiré, session clôturée, code inconnu, doublon,
+  **blocage actif → 429**, **saisie réussie → réinitialisation**) et `PresenceControllerIT`
+  (201 `source=ETUDIANT`, 409 `DEJA_PRESENT`, 410 `CODE_EXPIRE` au format `{code, message}`,
+  400 `CODE_INCONNU`, 410 après clôture + aucune ligne insérée). Flyway joue V1, V2, V3 sur H2 avec
+  `ddl-auto: validate` (B5) → la table `tentative_code` est validée par Hibernate au démarrage.
 
 ---
 
