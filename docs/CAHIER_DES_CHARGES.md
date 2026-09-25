@@ -96,6 +96,7 @@ KFOKAM48 organise des sessions de formation en présentiel. Aujourd'hui, la pré
 | Qu'est-ce qu'une « clôture de session » côté formateur ? Aucune question ne la définit, alors que Q10, Q12 et Q15 s'y réfèrent tous les trois | Trou — aucune réponse directe | Ajout d'une opération non imposée (`clôturer une session`, réservée au formateur), le contrat autorisant explicitement à « ajouter ses propres opérations » | Nouveau champ `clotureAt` sur `Session`, nouvel endpoint dans `api/contrat.yaml`, RG14 |
 | Comment gérer les tentatives répétées de code erroné ? | Q4 | Compteur d'échecs par couple (étudiant, session), blocage de 2 minutes au 5e échec, réinitialisé après le délai | Logique ajoutée dans `PresenceService`, pas de nouvel endpoint (le contrat impose déjà `POST /api/presences`) |
 | Le relecteur est-il un compte à part ? | Q7 | Non — état temporaire d'un étudiant (voir section 2) | Pas de table `Role` ; `Relecture.relecteurId` référence `Etudiant.id` |
+| Que faire si aucun autre étudiant n'est présent à la session au moment du dépôt ? | Q11 | Aucune relecture n'est créée ; l'exercice reste `EN_ATTENTE_RELECTURE` sans erreur | Aucun endpoint nouveau (le dépôt reste `POST /api/exercices` → 201) ; l'assignation est silencieuse dans `ExerciceService.deposer` |
 
 **Contradictions relevées :**
 

@@ -6,11 +6,48 @@ Une entrée par ticket, dans l'ordre de traitement : branche, PR (qui ferme l'is
 
 | Ticket | Titre | Branche | PR |
 | --- | --- | --- | --- |
+| #17 | [Backend] US-5 Assigner automatiquement un relecteur | `feat/17-backend-assigner-relecteur` | #43 |
 | #16 | [Backend] US-2 Marquer sa présence avec un code | `feat/16-backend-marquer-presence` | #40 |
 | #24 | [Backend] US-12 Gestion centralisée des erreurs (B4) | `feat/24-gestion-erreurs` | #38 |
 | #14 | [Backend] US-1 Ouvrir une session et générer un code de présence | `feat/14-backend-ouvrir-session` | #39 |
 | #25 | [Backend] US-13 Migrations Flyway V1 — schéma initial (B5) | `feat/25-flyway-v1-schema` | #37 |
 | #15 | [Backend] US-3 Déposer le lien de son exercice | `feat/15-backend-deposer-exercice` | #41 |
+
+---
+
+## #17 — [Backend] US-5 Assigner automatiquement un relecteur (EF8, RG2/4/5, Q5/6/7)
+
+- **Branche** : `feat/17-backend-assigner-relecteur` · **Commit** : `e3c41a8` (à préciser après commit) · **PR** : #43 — issue fermée.
+- **Fait** :
+  - Entité `Relecture` (nouvelle, D2) : `exercice_id` (clé étrangère vers `Exercice`), `relecteur_id`
+    (clé étrangère vers `Etudiant` — le relecteur n'est pas un acteur distinct, cf. §2 du cahier
+    des charges), `note` (Integer, CHECK 0-20), `commentaire` (TEXT), `statut`
+    (`StatutRelecture` enum `EN_ATTENTE` | `RENDUE`), `created_at`, `updated_at`.
+  - Enum `StatutRelecture` (nouvelle) — correspond à la classe D2.
+  - `RelectureRepository` : `findByExerciceId` + `existsByExerciceId`.
+  - **RG4 (Q6)** : la contrainte `UNIQUE(exercice_id)` — déjà présente dans `V1` sous forme
+    `exercice_id ... UNIQUE REFERENCES` — est garantie en base dès le premier dépôt. Aucune
+    migration nécessaire (B5 : le schéma V1 est inchangé).
+  - `ExerciceService.deposer` : après la sauvegarde de l'exercice, `assignerRelecteur` récupère les
+    présences de la session (`PresenceRepository.findBySessionId`), exclut l'auteur (RG2) et tire au
+    hasard un relecteur (RG5, via le bean `Random` injecté dans `ConfigurationAleatoire`). Si aucun
+    candidat n'est disponible (Q11), aucune relecture n'est créée et l'exercice reste
+    `EN_ATTENTE_RELECTURE`. Aucun endpoint nouveau : le dépôt reste `POST /api/exercices` → 201.
+  - `PresenceRepository` : méthode `findBySessionId` déjà existante (US-16), réutilisée telle quelle.
+- **Décision technique** : le `Random` est un bean Spring (`ConfigurationAleatoire`) et non
+  `ThreadLocalRandom.current()` pour que les tests unitaires puissent figer le tir par un seed
+  (`new Random(0)`), sans attendre de hasard réel. L'assignation est **silencieuse** : elle ne
+  change pas le contrat de réponse (201 `{ id, statut }`) et n'expose jamais l'identité du relecteur
+  (RG6/Q8 — `ExerciceCompletResponse` ne transporte que `note` et `commentaire`).
+- **Preuve** : `mvn -B test` → `BUILD SUCCESS`, **38 tests verts** (2 de plus qu'avant, dont les 3
+  nouveaux cas d'`ExerciceServiceTest` :
+  - `deposer_assigneUnRelecteurDifferentDeLAuteur` (RG2 + RG5 : le relecteur est 3 ou 4, jamais 2) ;
+  - `deposer_sansAutrePresent_resteEnAttenteSansRelecture` (Q11 : aucun relecteur éligible →
+    `EN_ATTENTE_RELECTURE`, 0 relecture créée, pas d'erreur) ;
+  - `deposer_apresExpirationMaisAvantCloture_accepteEtPasseEnAttenteDeRelecture` (Q12, enrichi :
+    vérification qu'aucune relecture n'est créée en l'absence de présents).
+  Flyway joue V1/V2/V3 sur H2 avec `ddl-auto: validate` (B5) → la table `relecture` (déjà en V1)
+  est validée par Hibernate au démarrage ; l'entité `Relecture` correspond donc au schéma.
 
 ---
 
