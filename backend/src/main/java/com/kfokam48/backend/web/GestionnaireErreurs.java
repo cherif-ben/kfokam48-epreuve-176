@@ -80,6 +80,17 @@ public class GestionnaireErreurs extends ResponseEntityExceptionHandler {
       HttpHeaders headers,
       HttpStatusCode statut,
       WebRequest request) {
+    // RG3 (Q9) : une note non entière (string, float) doit lever NOTE_INVALIDE, pas CORPS_INVALIDE.
+    String message = erreur.getMessage();
+    if (message != null && message.contains("note")) {
+      return ResponseEntity.badRequest()
+          .body(new ErreurResponse("NOTE_INVALIDE", "La note doit être un nombre entier compris entre 0 et 20."));
+    }
+    // RG11 (Q14) : source invalide doit lever SOURCE_INVALIDE, pas CORPS_INVALIDE.
+    if (message != null && message.contains("SourcePresence")) {
+      return ResponseEntity.badRequest()
+          .body(new ErreurResponse("SOURCE_INVALIDE", "La source doit être ETUDIANT ou FORMATEUR."));
+    }
     return ResponseEntity.badRequest()
         .body(
             new ErreurResponse(

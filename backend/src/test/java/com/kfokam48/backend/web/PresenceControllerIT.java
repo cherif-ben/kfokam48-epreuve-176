@@ -22,7 +22,7 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
-/** EF2 / EF3 / EF4 — intégration de {@code POST /api/presences} : 201, 410, 400 et 409. */
+/** EF2 / EF3 / EF4 / EF5 — intégration de {@code POST /api/presences} : 201, 410, 400 et 409. */
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
@@ -125,5 +125,46 @@ class PresenceControllerIT {
         .andExpect(jsonPath("$.code").value("CODE_EXPIRE"));
 
     assertThat(presenceRepository.findBySessionId(session.getId())).isEmpty();
+  }
+
+  @Test
+  void marquer_avecSourceFormateur_retourne201EtSourceFormateur() throws Exception {
+    creerSession("IT16FMT", LocalDateTime.now().plusMinutes(10));
+    Long etudiantId = etudiants().get(0);
+
+    mockMvc
+        .perform(
+            post("/api/presences")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    "{\"code\":\"IT16FMT\",\"etudiantId\":%d,\"source\":\"FORMATEUR\"}"
+                        .formatted(etudiantId)))
+        .andExpect(status().isCreated())
+        .andExpect(jsonPath("$.id").exists())
+        .andExpect(jsonPath("$.etudiantId").value(etudiantId))
+        .andExpect(jsonPath("$.sessionId").exists())
+        .andExpect(jsonPath("$.source").value("FORMATEUR"));
+  }
+
+  @Test
+  void marquer_avecSourceInvalide_retourne400SourceInvalide() throws Exception {
+    creerSession("IT16BAD", LocalDateTime.now().plusMinutes(10));
+    Long etudiantId = etudiants().get(0);
+
+    mockMvc
+        .perform(
+            post("/api/presences")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    "{\"code\":\"IT16BAD\",\"etudiantId\":%d,\"source\":\"INVALIDE\"}"
+                        .formatted(etudiantId)))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.code").value("SOURCE_INVALIDE"))
+        .andExpect(jsonPath("$.message").isNotEmpty());
+
+    assertThat(
+            presenceRepository.findBySessionId(
+                sessionRepository.findByCode("IT16BAD").orElseThrow().getId()))
+        .isEmpty();
   }
 }

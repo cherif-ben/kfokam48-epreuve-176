@@ -75,6 +75,23 @@ class PresenceServiceTest {
   }
 
   @Test
+  void marquer_avecSourceFormateur_enregistreUnePresenceFormateur() {
+    Etudiant etudiant = mock(Etudiant.class);
+    when(etudiant.getId()).thenReturn(1L);
+    when(sessionRepository.findByCode("ABC234"))
+        .thenReturn(Optional.of(session("ABC234", MAINTENANT.plusMinutes(14))));
+    when(etudiantRepository.findById(1L)).thenReturn(Optional.of(etudiant));
+    when(presenceRepository.existsBySessionIdAndEtudiantId(any(), any())).thenReturn(false);
+    when(presenceRepository.save(any(Presence.class))).thenAnswer(appel -> appel.getArgument(0));
+
+    PresenceResponse reponse =
+        presenceService.marquerParEtudiant(
+            new MarquerPresenceRequest("abc234", 1L, SourcePresence.FORMATEUR));
+
+    assertThat(reponse.source()).isEqualTo(SourcePresence.FORMATEUR);
+  }
+
+  @Test
   void marquer_avecCodeExpire_leveCodeExpire() {
     // RG1 (Q2) : le code n'est valide que 15 minutes.
     when(sessionRepository.findByCode("ABC234"))
@@ -112,5 +129,20 @@ class PresenceServiceTest {
 
     assertThatThrownBy(() -> presenceService.marquerParEtudiant(new MarquerPresenceRequest("ABC234", 1L)))
         .isInstanceOf(DejaPresentException.class);
+  }
+
+  @Test
+  void marquer_avecSourceFormateur_enregistreUnePresenceFormateur() {
+    // EF5 / RG11 (Q14) : le formateur peut ajouter une présence manuellement.
+    when(sessionRepository.findByCode("ABC234"))
+        .thenReturn(Optional.of(session("ABC234", MAINTENANT.plusMinutes(14))));
+    when(etudiantRepository.findById(1L)).thenReturn(Optional.of(new Etudiant("Etudiant 1", 1L)));
+    when(presenceRepository.existsBySessionIdAndEtudiantId(any(), any())).thenReturn(false);
+    when(presenceRepository.save(any(Presence.class))).thenAnswer(appel -> appel.getArgument(0));
+
+    PresenceResponse reponse =
+        presenceService.marquerParEtudiant(new MarquerPresenceRequest("ABC234", 1L, SourcePresence.FORMATEUR));
+
+    assertThat(reponse.source()).isEqualTo(SourcePresence.FORMATEUR);
   }
 }
