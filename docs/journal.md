@@ -7,6 +7,7 @@ Une entrée par ticket, dans l'ordre de traitement : branche, PR (qui ferme l'is
 | Ticket | Titre | Branche | PR |
 | --- | --- | --- | --- |
 | #24 | [Backend] US-12 Gestion centralisée des erreurs (B4) | `feat/24-gestion-erreurs` | #38 |
+| #14 | [Backend] US-1 Ouvrir une session et générer un code de présence | `feat/14-backend-ouvrir-session` | #39 |
 | #25 | [Backend] US-13 Migrations Flyway V1 — schéma initial (B5) | `feat/25-flyway-v1-schema` | #37 |
 
 ---
@@ -55,4 +56,39 @@ Une entrée par ticket, dans l'ordre de traitement : branche, PR (qui ferme l'is
 - **Preuve** : `./mvnw -o -B test` → `BUILD SUCCESS`, 7 tests verts, dont
   `GestionnaireErreursIT` (5 cas : 410 métier, 400 CHAMP_MANQUANT, 400 CORPS_INVALIDE,
   404 RESSOURCE_INCONNUE, 500 sans stack trace).
+
+---
+
+## #14 — [Backend] US-1 Ouvrir une session et générer un code de présence
+
+- **Branche** : `feat/14-backend-ouvrir-session` · **Commit** : `44b2631` · **PR** : #39 (fusionnée) — issue fermée.
+- **Fait** :
+  - `POST /api/sessions` → **201** `{ id, code, ouvertureAt, expirationAt }`, exactement le schéma
+    imposé par le contrat. Code de **6 caractères** tiré dans un alphabet sans caractères ambigus
+    (`ABCDEFGHJKLMNPQRSTUVWXYZ23456789`, pas de `0/O/1/I/L` — le code est dicté à l'oral), unicité
+    garantie par la contrainte `UNIQUE(code)` de `V1` **et** par une relecture `existsByCode` avec
+    nouvelle tentative.
+  - **RG1 (Q2)** : `expirationAt = ouvertureAt + 15 min`, calculé côté API uniquement.
+  - Entités `Promotion`, `Formateur`, `Etudiant`, `Session` + `repository/` + `dto/` (records) —
+    aucune entité JPA ne sort en JSON (B3). Les relations sont portées par des identifiants
+    (`promotionId`, `formateurId`) comme dans D2, ce qui évite tout chargement paresseux.
+  - Endpoints libres ajoutés **et documentés dans `api/contrat.YAML`** :
+    `GET /api/sessions/{id}`, `GET /api/sessions?promotionId=&formateurId=`, `GET /api/promotions`,
+    `GET /api/etudiants?promotionId=`.
+  - `config/ConfigurationHorloge` : `Clock` injectable, pour tester RG1 (et plus tard RG13/RG14)
+    sans attente réelle.
+- **Décision** : le contrat imposé ne transporte pas de `formateurId` dans `POST /api/sessions` et
+  interdit de modifier son schéma — le service rattache donc la session au **premier formateur
+  enregistré** (données de démo `V2`). Aucun champ ajouté au schéma imposé.
+- **Correction de dettes repérée en passant** : le contrat `api /contrat.YAML` avait `GET /api/exercices`
+  et `GET /api/relectures` indentés à la racine (hors de `paths:`) → document OpenAPI invalide.
+  Indentation corrigée, revalidée par un parseur YAML (10 chemins sous `paths`).
+  *(Le nom du fichier — dossier `api ` avec espace finale et `contrat.YAML` en majuscules — ne
+  correspond pas au `api/contrat.yaml` annoncé dans le README ; à trancher avec l'auteur.)*
+- **Preuve** : `./mvnw -o -B test` → `BUILD SUCCESS`, **14 tests verts** :
+  `SessionServiceTest` (15 min + promotion inconnue) et `SessionControllerIT` (201 + 15 min
+  constatés en base, 404 `PROMOTION_INCONNUE`, 400 `CHAMP_MANQUANT`, 404 `SESSION_INCONNUE`, liste).
+- **Note outillage** : Spring Boot 4 embarque **Jackson 3** (`tools.jackson.*`) ;
+  `com.fasterxml.jackson.databind` n'est plus sur le classpath. Les tests s'appuient donc sur
+  `jsonPath` plutôt que sur un `ObjectMapper`.
 
