@@ -6,6 +6,7 @@ Une entrée par ticket, dans l'ordre de traitement : branche, PR (qui ferme l'is
 
 | Ticket | Titre | Branche | PR |
 | --- | --- | --- | --- |
+| #20 | [Backend] US-8 Ajouter une présence manuellement | `feat/20-backend-ajouter-presence-manuellelement` | #44 |
 | #23 | [Backend] US-11 Bloquer temporairement après 5 échecs de code | `feat/23-backend-blocage-code` | #42 |
 | #17 | [Backend] US-5 Assigner automatiquement un relecteur | `feat/17-backend-assigner-relecteur` | #43 |
 | #16 | [Backend] US-2 Marquer sa présence avec un code | `feat/16-backend-marquer-presence` | #40 |
@@ -13,6 +14,26 @@ Une entrée par ticket, dans l'ordre de traitement : branche, PR (qui ferme l'is
 | #14 | [Backend] US-1 Ouvrir une session et générer un code de présence | `feat/14-backend-ouvrir-session` | #39 |
 | #25 | [Backend] US-13 Migrations Flyway V1 — schéma initial (B5) | `feat/25-flyway-v1-schema` | #37 |
 | #15 | [Backend] US-3 Déposer le lien de son exercice | `feat/15-backend-deposer-exercice` | #41 |
+
+---
+
+## #20 — [Backend] US-8 Ajouter une présence manuellement (EF5, RG11, Q14)
+
+- **Branche** : `feat/20-backend-ajouter-presence-manuellelement` · **PR** : #44 — issue fermée.
+- **Fait** :
+  - `POST /api/presences` accepte un champ optionnel `source` (enum `ETUDIANT | FORMATEUR`) :
+    absent ou `null` → `ETUDIANT` (comportement inchangé pour l'US-2) ; `FORMATEUR` → présence
+    ajoutée manuellement par le formateur (EF5, RG11).
+  - `MarquerPresenceRequest` : ajout du champ `source` + constructeur à 2 args conservé pour
+    l'existant ; validation de l'enum par Jackson, erreur 400 `SOURCE_INVALIDE` via
+    `GestionnaireErreurs` (au lieu d'un générique `CORPS_INVALIDE`).
+  - `PresenceService.marquerParEtudiant` résout la source (défaut `ETUDIANT`) puis délègue à
+    `marquer` — l'unicité (session, étudiant) s'applique quelle que soit la source (RG12).
+  - **Contrat** : champ `source` documenté dans `api/contrat.yaml` §POST /api/presences.
+- **Preuve** : `./mvnw -o -B test` → `BUILD SUCCESS`, **39 tests verts**, dont
+  `PresenceServiceTest.marquer_avecSourceFormateur_enregistreUnePresenceFormateur` (unitaire) et
+  `PresenceControllerIT` : 201 `source=FORMATEUR` + 400 `SOURCE_INVALIDE` (format `{code, message}`,
+  aucune ligne insérée).
 
 ---
 
