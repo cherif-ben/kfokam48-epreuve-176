@@ -80,6 +80,11 @@ export interface ErreurApi {
   message: string;
 }
 
+/** Erreur normalisée { code, message } + statut HTTP (F3, B4). */
+export interface ApiError extends ErreurApi {
+  status: number;
+}
+
 export interface SessionOuverte {
   id: number;
   code: string;

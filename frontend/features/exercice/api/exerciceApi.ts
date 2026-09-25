@@ -15,7 +15,7 @@ export const exerciceApi = {
     });
   },
 
-  /** EF7 / RG10 — L'étudiant remplace le lien de son exercice */
+  /** EF7 / RG10 — L'étudiant remplace le lien de son exercice (tant que non relu) */
   async remplacerExercice(id: number, lien: string): Promise<Exercice> {
     return apiFetch<Exercice>(`/api/exercices/${id}`, {
       method: "PUT",
@@ -24,7 +24,7 @@ export const exerciceApi = {
     });
   },
 
-  /** RG6 — L'étudiant consulte ses propres exercices */
+  /** RG6 — L'étudiant consulte ses propres exercices (avec note/commentaire si relu) */
   async getExercices(etudiantId: number, sessionId?: number): Promise<ExerciceComplet[]> {
     return apiFetch<ExerciceComplet[]>("/api/exercices", {
       params: { etudiantId, sessionId },
