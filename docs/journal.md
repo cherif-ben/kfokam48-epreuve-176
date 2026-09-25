@@ -10,6 +10,7 @@ Une entrée par ticket, dans l'ordre de traitement : branche, PR (qui ferme l'is
 | #24 | [Backend] US-12 Gestion centralisée des erreurs (B4) | `feat/24-gestion-erreurs` | #38 |
 | #14 | [Backend] US-1 Ouvrir une session et générer un code de présence | `feat/14-backend-ouvrir-session` | #39 |
 | #25 | [Backend] US-13 Migrations Flyway V1 — schéma initial (B5) | `feat/25-flyway-v1-schema` | #37 |
+| #15 | [Backend] US-3 Déposer le lien de son exercice | `feat/15-backend-deposer-exercice` | #41 |
 
 ---
 
@@ -94,6 +95,39 @@ Une entrée par ticket, dans l'ordre de traitement : branche, PR (qui ferme l'is
   `jsonPath` plutôt que sur un `ObjectMapper`.
 
 ---
+
+## #15 — [Backend] US-3 Déposer le lien de son exercice (EF6, RG9, Q12)
+
+- **Branche** : `feat/15-backend-deposer-exercice` · **Commit** : `fadbf66` · **PR** : #41 (fusionnée) — issue fermée.
+- **Fait** :
+  - `POST /api/exercices` → **201** `{ id, statut }`, le statut étant `EN_ATTENTE_RELECTURE`
+    (Q11) et non `DEPOSE` : le dépôt déclenche immédiatement l'attente de relecture.
+  - **RG9** : unicité par couple (session, étudiant) — `ExerciceRepository.existsBySessionIdAndEtudiantId`,
+    protégée par la contrainte `UNIQUE(session_id, etudiant_id)` de `V1`. Doublon → 409
+    `EXERCICE_DEJA_DEPOSE`.
+  - **Q12** : le dépôt reste possible après `expirationAt` de la session, jusqu'à sa clôture
+    (RG14) → 409 `SESSION_CLOTUREE` sinon. Aucun contrôle de présence requis (hypothèse §7).
+  - **LIEN_INVALIDE** (400) : validation côté API via `ExerciceService.validerLien` (scheme
+    http/https + host non vide) — aucune règle dupliquée côté front (F3).
+  - **EF7 / RG10 (Q13)** : `PUT /api/exercices/{id}` remplace le lien, refusé 409
+    `RELECTURE_DEJA_COMMENCEE` dès que l'exercice est `RELU` ou que la session est clôturée.
+  - **RG6 (Q8)** : `GET /api/exercices?etudiantId=&sessionId=` retourne la liste avec note et
+    commentaire si relu, **sans jamais exposer l'identité du relecteur** (DTO
+    `ExerciceCompletResponse`, pas l'entité `Relecture`).
+  - Entités `Exercice` + `StatutExercice` + `ExerciceRepository` + 4 DTOs — aucune entité JPA en
+    JSON (B3). Les relations sont portées par des identifiants (`sessionId`, `etudiantId`).
+  - L'assignation automatique du relecteur (US-5, EF8) n'est **pas** branchée ici : elle arrive
+    avec le ticket #26 (US-5). L'exercice passe donc en `EN_ATTENTE_RELECTURE` en attendant.
+- **Décision** : le statut sortant vaut `EN_ATTENTE_RELECTURE` et non `DEPOSE` : le contrat imposé
+  ne listant que `DEPOSE`, `EN_ATTENTE_RELECTURE`, `RELU` (D4), les deux premiers sont équivalents
+  à l'issue du dépôt, et `EN_ATTENTE_RELECTURE` est plus explicite quant à l'étape suivante.
+- **Preuve** : `./mvnw -o -B test` → `BUILD SUCCESS`, **34 tests verts** (10 de plus qu'avant,
+  dont les 5 d'`ExerciceServiceTest` et les 5 d'`ExerciceControllerIT` :
+  - 201 `EN_ATTENTE_RELECTURE` + vérification en base ;
+  - 409 `EXERCICE_DEJA_DEPOSE` ;
+  - 400 `LIEN_INVALIDE` ;
+  - 409 `SESSION_CLOTUREE` (Q12) ;
+  - `PUT` OK → puis 409 `RELECTURE_DEJA_COMMENCEE` après `marquerRelu`).
 
 ## #16 — [Backend] US-2 Marquer sa présence avec un code
 
