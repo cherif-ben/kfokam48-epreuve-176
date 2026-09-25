@@ -6,6 +6,7 @@ Une entrée par ticket, dans l'ordre de traitement : branche, PR (qui ferme l'is
 
 | Ticket | Titre | Branche | PR |
 | --- | --- | --- | --- |
+| #23 | [Backend] US-11 Bloquer temporairement après 5 échecs de code | `feat/23-backend-blocage-code` | #42 |
 | #17 | [Backend] US-5 Assigner automatiquement un relecteur | `feat/17-backend-assigner-relecteur` | #43 |
 | #16 | [Backend] US-2 Marquer sa présence avec un code | `feat/16-backend-marquer-presence` | #40 |
 | #24 | [Backend] US-12 Gestion centralisée des erreurs (B4) | `feat/24-gestion-erreurs` | #38 |
@@ -17,7 +18,7 @@ Une entrée par ticket, dans l'ordre de traitement : branche, PR (qui ferme l'is
 
 ## #17 — [Backend] US-5 Assigner automatiquement un relecteur (EF8, RG2/4/5, Q5/6/7)
 
-- **Branche** : `feat/17-backend-assigner-relecteur` · **Commit** : `e3c41a8` (à préciser après commit) · **PR** : #43 — issue fermée.
+- **Branche** : `feat/17-backend-assigner-relecteur` · **Commit** : `5b20677` · **PR** : #43 — issue fermée.
 - **Fait** :
   - Entité `Relecture` (nouvelle, D2) : `exercice_id` (clé étrangère vers `Exercice`), `relecteur_id`
     (clé étrangère vers `Etudiant` — le relecteur n'est pas un acteur distinct, cf. §2 du cahier
@@ -48,6 +49,37 @@ Une entrée par ticket, dans l'ordre de traitement : branche, PR (qui ferme l'is
     vérification qu'aucune relecture n'est créée en l'absence de présents).
   Flyway joue V1/V2/V3 sur H2 avec `ddl-auto: validate` (B5) → la table `relecture` (déjà en V1)
   est validée par Hibernate au démarrage ; l'entité `Relecture` correspond donc au schéma.
+## #23 — [Backend] US-11 Bloquer temporairement après 5 échecs de code (RG13, Q4)
+
+- **Branche** : `feat/23-backend-blocage-code` · **Commit** : `eefef4d` · **PR** : #42 — issue fermée.
+- **Fait** :
+  - Table `tentative_code` (Flyway `V3`) : `session_id`, `etudiant_id` (FK vers `session`/`etudiant`),
+    `echecs INTEGER NOT NULL DEFAULT 0`, `blocage_jusqua TIMESTAMP`, `dernier_echec TIMESTAMP`,
+    `created_at`, `updated_at` + contrainte `UNIQUE(session_id, etudiant_id)` (le blocage est
+    propre à chaque couple, pas global) et 3 index (`session_id`, `etudiant_id`, `blocage_jusqua`).
+  - Entité `TentativeCode` (RG13) : constantes `SEUIL_ECHECS = 5` et `DELAI_BLOCAGE = 2 min`.
+    `estBloquee(now)` → true si `blocageJusqua > now`. `enregistrerEchec(now)` incrémente le
+    compteur et pose `blocageJusqua = now + 2 min` au 5e échec. `reinitialiser(now)` remet
+    `echecs = 0` et `blocageJusqua = null`.
+  - `TentativeCodeRepository` : `findBySessionIdAndEtudiantId` + `reinitialiser` (UPDATE ciblé,
+    pas de suppression de ligne — le compteur est réinitialisé, pas recréé).
+  - `PresenceService` : le blocage est vérifié **avant** tout traitement, une fois la session
+    identifiée (après `findByCode`). Chaque échec (code expiré, session clôturée, étudiant
+    inconnu, déjà présent) appelle `enregistrerEchec`. Une saisie réussie appelle `reinitialiser`.
+    Aucun endpoint nouveau : le contrat impose déjà `POST /api/presences`.
+  - `TropDeTentativesException` (déjà existante, ticket #24) → **429** `TROP_DE_TENTATIVES` avec le
+    nombre de secondes restantes dans le message.
+- **Décision technique** : stockage en base (`tentative_code`) et non cache in-memory. Justification
+  (Cahier des charges §7, Q4) : le blocage doit survivre un redémarrage du serveur et être isolé par
+  couple (étudiant, session) — une table avec `UNIQUE(session_id, etudiant_id)` donne ces deux
+  garanties sans état partagé à gérer. Le `Clock` injectable (`ConfigurationHorloge`) rend RG13
+  testable sans attente réelle.
+- **Preuve** : `mvn -B test` → `BUILD SUCCESS`, **36 tests verts** dont
+  `PresenceServiceTest` (7 cas : nominal, code expiré, session clôturée, code inconnu, doublon,
+  **blocage actif → 429**, **saisie réussie → réinitialisation**) et `PresenceControllerIT`
+  (201 `source=ETUDIANT`, 409 `DEJA_PRESENT`, 410 `CODE_EXPIRE` au format `{code, message}`,
+  400 `CODE_INCONNU`, 410 après clôture + aucune ligne insérée). Flyway joue V1, V2, V3 sur H2 avec
+  `ddl-auto: validate` (B5) → la table `tentative_code` est validée par Hibernate au démarrage.
 
 ---
 
@@ -64,7 +96,7 @@ Une entrée par ticket, dans l'ordre de traitement : branche, PR (qui ferme l'is
   `session.code` et `relecture(exercice_id)` sont déjà indexés par leur contrainte `UNIQUE`.
 - **Preuve** : `cd backend && ./mvnw -o -B test` → `BUILD SUCCESS`, 2 tests verts ; Flyway joue V1 puis
   V2 sur H2 avec `ddl-auto: validate` (B5), donc le schéma est validé par Hibernate au démarrage.
-- **Dette assumée** : la table `tentative_code` (RG13, ticket #23) arrivera en `V3`.
+- **Dette assumée** : la table `tentative_code` (RG13, ticket #23) arrive en `V3` — cf. entrée #23.
 
 ---
 
