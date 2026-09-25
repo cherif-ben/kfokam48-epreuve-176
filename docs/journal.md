@@ -6,6 +6,15 @@ Une entrée par ticket, dans l'ordre de traitement : branche, PR (qui ferme l'is
 
 | Ticket | Titre | Branche | PR |
 | --- | --- | --- | --- |
+| #35 | [Frontend] US-10 Tableau récapitulatif | `feat/front-ecran-tableau` | (fusion directe) |
+| #30/#31 | [Frontend] US-5/6 Relectures assignées + notation | `feat/front-ecrans-relecteur` | (fusion directe) |
+| #27/#28/#29 | [Frontend] US-2/3/4 Présence + exercices | `feat/front-ecrans-etudiant` | (fusion directe) |
+| #1/#33/#34 | [Frontend] US-1/8/9 Écrans formateur | `feat/front-ecrans-formateur` | (fusion directe) |
+| #36 | [Frontend] US-11 Couche API dédiée (F3) | `feat/front-couche-api` | (fusion directe) |
+| #21 | [Backend] US-9 Clôturer une session | `feat/21-backend-cloturer-session` | #49 |
+| #19 | [Backend] US-7 Corriger une note avant clôture | `feat/19-backend-corriger-note` | #51 |
+| EF8/EF5 | [Backend] GET /api/relectures + POST sessions/{id}/presences | `feat/endpoints-front-v2` | #52 |
+| EF12 | [Backend] Tableau récapitulatif (Q11, Q16, ENF2) | `feat/tableau-ef12` | #47 |
 | #20 | [Backend] US-8 Ajouter une présence manuellement | `feat/20-backend-ajouter-presence-manuellelement` | #44 |
 | #23 | [Backend] US-11 Bloquer temporairement après 5 échecs de code | `feat/23-backend-blocage-code` | #42 |
 | #17 | [Backend] US-5 Assigner automatiquement un relecteur | `feat/17-backend-assigner-relecteur` | #43 |
@@ -14,6 +23,100 @@ Une entrée par ticket, dans l'ordre de traitement : branche, PR (qui ferme l'is
 | #14 | [Backend] US-1 Ouvrir une session et générer un code de présence | `feat/14-backend-ouvrir-session` | #39 |
 | #25 | [Backend] US-13 Migrations Flyway V1 — schéma initial (B5) | `feat/25-flyway-v1-schema` | #37 |
 | #15 | [Backend] US-3 Déposer le lien de son exercice | `feat/15-backend-deposer-exercice` | #41 |
+
+---
+
+## #35 — [Frontend] US-10 Tableau récapitulatif (EF12, Q16, ENF2)
+
+- **Branche** : `feat/front-ecran-tableau` — fusionnée sur `main`.
+- **Fait** : `/tableau` — sélecteur de promotion, une ligne par étudiant (présences, dépôts,
+  moyenne, relectures en attente). Q16 : moyenne `null` affichée « — », jamais 0 ; la moyenne
+  vient de l'API, jamais recalculée côté front (F3). 404 `PROMOTION_INCONNUE` affiché.
+- **Preuve** : `tsc --noEmit` + `npm run build` verts.
+
+## #30/#31 — [Frontend] US-5/6 Relectures assignées + notation (EF8, EF9, EF10)
+
+- **Branche** : `feat/front-ecrans-relecteur` — fusionnée sur `main`.
+- **Fait** : `/etudiant/relectures` — liste des relectures assignées avec lien de l'exercice,
+  sans identité d'auteur ni de relecteur (RG6/Q8). Formulaire de notation : note entière 0-20
+  (input `number` min/max/step), commentaire ; erreurs `NOTE_INVALIDE`, `AUTO_RELECTURE`,
+  `RELECTURE_DEJA_RENDUE` affichées depuis l'API ; correction possible avant clôture (RG11/Q10).
+- **Preuve** : `tsc` + `npm run build` verts.
+
+## #27/#28/#29 — [Frontend] US-2/3/4 Présence + exercices (EF2, EF6, EF7)
+
+- **Branche** : `feat/front-ecrans-etudiant` — fusionnée sur `main`.
+- **Fait** :
+  - `/etudiant/presence` : sélecteurs promotion + nom (Q1), code 6 caractères ; erreurs
+    `CODE_INCONNU`, `CODE_EXPIRE` (RG1/RG14), `DEJA_PRESENT` (RG12) lisibles ; aucune
+    vérification locale d'expiration (F3).
+  - `/etudiant/exercices` : dépôt (EF6/RG9) parmi les sessions non clôturées (Q12) ;
+    `LIEN_INVALIDE`, `EXERCICE_DEJA_DEPOSE` affichés ; modification du lien confirmée tant que
+    l'exercice n'est pas `RELU` (EF7/RG10) — le backend tranche (Q13) ; note/commentaire affichés
+    sans jamais révéler le relecteur (RG6/Q8).
+- **Preuve** : `tsc` + `npm run build` verts.
+
+## #1/#33/#34 — [Frontend] Écrans formateur (EF1, EF5, EF11)
+
+- **Branche** : `feat/front-ecrans-formateur` — fusionnée sur `main`.
+- **Fait** :
+  - `/sessions/nouvelle` (#1, EF1/RG1) : formulaire titre + promotion ; à la soumission le code
+    s'affiche en grand avec bouton « copier » et la durée de validité issue de l'API
+    (`expirationAt`) — jamais recalculée (F3). `CHAMP_MANQUANT` et `PROMOTION_INCONNUE` affichés.
+  - `/sessions` (#34, EF11/RG14) : bouton « Clôturer la session » avec confirmation explicite
+    (action irréversible) ; 409 `SESSION_DEJA_CLOTUREE` affiché ; statuts Ouverte/Expirée/Clôturée.
+  - `/sessions` (#33, EF5/RG11) : « Ajouter une présence manuellement » par étudiant,
+    marquage visuel « ajouté par le formateur » (Q14) ; 409 `DEJA_PRESENT` affiché.
+  - Accueil `/` : porte d'entrée formateur/étudiant.
+- **Preuve** : `tsc` + `npm run build` verts (routes `/`, `/sessions`, `/sessions/nouvelle`).
+
+## #36 — [Frontend] US-11 Couche API dédiée (F3)
+
+- **Branche** : `feat/front-couche-api` — fusionnée sur `main`.
+- **Fait** : un module par ressource (`sessionApi`, `presenceApi`, `exerciceApi`,
+  `relectureApi`, `tableauApi` + `promotionApi`, `etudiantApi`), client unique `lib/api.ts`
+  avec normalisation des erreurs en `{ code, message }` (+ statut HTTP) — aucun fetch direct
+  dans les composants. `relectureApi` passe `relecteurId` dans le corps du POST (contrat) et
+  `presenceApi` expose l'ajout manuel `POST /api/sessions/{id}/presences`.
+- **Preuve** : `tsc --noEmit` + `npm run build` verts.
+
+## #21 — [Backend] US-9 Clôturer une session (EF11, RG14, Q3)
+
+- **Branche** : `feat/21-backend-cloturer-session` · **PR** : #49 (fusionnée) — issue fermée.
+- **Fait** : `PATCH /api/sessions/{id}/cloture` → 200 `{ id, clotureAt }` ; double clôture → 409
+  `SESSION_DEJA_CLOTUREE` ; session inconnue → 404. Verrouillage post-clôture vérifié en
+  intégration : présence → 410 `CODE_EXPIRE`, dépôt → 409 `SESSION_CLOTUREE`, relecture → 409
+  `RELECTURE_DEJA_RENDUE` (RG12). Trou comblé §7 (le formateur doit pouvoir clore).
+- **Preuve** : `./mvnw -o -B test` → BUILD SUCCESS, 49 tests verts dont 7 pour la clôture.
+
+## #19 — [Backend] US-7 Corriger une note avant clôture (EF10, RG11, RG12, Q10)
+
+- **Branche** : `feat/19-backend-corriger-note` · **PR** : #51 (fusionnée) — issue fermée.
+- **Fait** : tests d'intégration du second `POST /api/relectures/{id}` : avant clôture → 200,
+  note remplacée, `modifieeAt` renseigné, statut exercice reste `RELU` ; après clôture → 409
+  `RELECTURE_DEJA_RENDUE`, note intacte. Décision Q10 > Q15 (§7) rappelée.
+- **Preuve** : 51 tests verts.
+
+## Endpoints front — GET /api/relectures + POST /api/sessions/{id}/presences (EF5, EF8)
+
+- **Branche** : `feat/endpoints-front-v2` · **PR** : #52 (fusionnée).
+- **Fait** :
+  - `GET /api/relectures?relecteurId=&statut=` (EF8/RG5) : liste des relectures assignées avec
+    lien de l'exercice, sans aucune identité exposée (RG6/Q8).
+  - `POST /api/sessions/{id}/presences` (EF5/RG11/Q14) : ajout manuel par le formateur,
+    `source=FORMATEUR` ; 409 `DEJA_PRESENT` (RG12), 410 `SESSION_CLOTUREE` (RG14, exception
+    dédiée `PresenceSessionClotureeException` — le contrat distingue le 410 pour cette
+    opération), 404 session/étudiant inconnu.
+  - `TableauControllerIT` rendu robuste aux données résiduelles du contexte H2 partagé.
+- **Preuve** : 59 tests verts.
+
+## EF12 — Tableau récapitulatif (Q11, Q16, ENF2)
+
+- **Branche** : `feat/tableau-ef12` · **PR** : #47 (fusionnée).
+- **Fait** : `GET /api/tableau?promotionId=` — une ligne par étudiant (présences, dépôts,
+  moyenne nullable, relectures en attente). 4 requêtes batch `GROUP BY` indépendantes du nombre
+  d'étudiants (ENF2 < 2 s pour 60 étudiants). Moyenne calculée côté API (F3).
+- **Preuve** : tests d'intégration 200 (agrégation exacte) + 404 `PROMOTION_INCONNUE`.
 
 ---
 
