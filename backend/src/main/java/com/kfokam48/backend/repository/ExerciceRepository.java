@@ -4,6 +4,8 @@ import com.kfokam48.backend.entity.Exercice;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 /** Accès aux exercices (B3). */
 public interface ExerciceRepository extends JpaRepository<Exercice, Long> {
@@ -19,4 +21,10 @@ public interface ExerciceRepository extends JpaRepository<Exercice, Long> {
   List<Exercice> findBySessionId(Long sessionId);
 
   long countByEtudiantId(Long etudiantId);
+
+  /** EF12 (Q16) — comptage d'exercices déposés par étudiant, pour les sessions d'une promotion. */
+  @Query(
+      "SELECT e.etudiantId, COUNT(e) FROM Exercice e WHERE e.sessionId IN :sessionIds GROUP BY e.etudiantId")
+  List<Object[]> countExercicesParEtudiant(@Param("sessionIds") List<Long> sessionIds);
 }
+
