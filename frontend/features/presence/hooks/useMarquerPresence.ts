@@ -26,7 +26,7 @@ export function useMarquerPresence(): UseMarquerPresenceResult {
         if (e instanceof Error && "code" in e && "status" in e) {
           setError(e as ApiError);
         } else {
-          setError({ code: "ERREUR_INCONNU", message: (e as Error).message });
+          setError({ code: "ERREUR_INCONNU", message: (e as Error).message, status: 0 });
         }
       } finally {
         setLoading(false);
