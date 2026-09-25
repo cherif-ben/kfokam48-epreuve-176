@@ -1,13 +1,18 @@
 package com.kfokam48.backend.web;
 
+import com.kfokam48.backend.dto.RelectureAssigneeResponse;
 import com.kfokam48.backend.dto.RelectureResponse;
 import com.kfokam48.backend.dto.RendreRelectureRequest;
+import com.kfokam48.backend.entity.StatutRelecture;
 import com.kfokam48.backend.service.RelectureService;
 import jakarta.validation.Valid;
+import java.util.List;
 import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
@@ -21,6 +26,17 @@ public class RelectureController {
 
   public RelectureController(RelectureService relectureService) {
     this.relectureService = relectureService;
+  }
+
+  /**
+   * EF8 / RG5 — les relectures assignées au relecteur, filtrables par statut
+   * ({@code ?statut=EN_ATTENTE|RENDUE}). RG6 (Q8) : aucune identité exposée.
+   */
+  @GetMapping
+  public List<RelectureAssigneeResponse> lister(
+      @RequestParam Long relecteurId,
+      @RequestParam(required = false) StatutRelecture statut) {
+    return relectureService.listerAssignees(relecteurId, statut);
   }
 
   /**

@@ -1,5 +1,6 @@
 package com.kfokam48.backend.service;
 
+import com.kfokam48.backend.dto.RelectureAssigneeResponse;
 import com.kfokam48.backend.dto.RelectureResponse;
 import com.kfokam48.backend.dto.RendreRelectureRequest;
 import com.kfokam48.backend.entity.Exercice;
@@ -18,6 +19,7 @@ import com.kfokam48.backend.repository.RelectureRepository;
 import com.kfokam48.backend.repository.SessionRepository;
 import java.time.Clock;
 import java.time.LocalDateTime;
+import java.util.List;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -108,5 +110,24 @@ public class RelectureService {
     exerciceRepository.save(exercice);
 
     return RelectureResponse.depuis(relecture);
+  }
+
+  /**
+   * EF8 / RG5 — liste des relectures assignées à un relecteur, filtrable par statut. Chaque ligne
+   * porte le lien de l'exercice à relire. RG6 (Q8) : ni le nom de l'auteur ni celui du relecteur
+   * ne sont exposés.
+   */
+  @Transactional(readOnly = true)
+  public List<RelectureAssigneeResponse> listerAssignees(Long relecteurId, StatutRelecture statut) {
+    return relectureRepository.findByRelecteurId(relecteurId).stream()
+        .filter(r -> statut == null || r.getStatut() == statut)
+        .map(
+            r -> {
+              String lien =
+                  exerciceRepository.findById(r.getExerciceId()).map(Exercice::getLien).orElse(null);
+              return RelectureAssigneeResponse.depuis(
+                  r.getId(), r.getExerciceId(), lien, r.getStatut(), r.getNote(), r.getCommentaire());
+            })
+        .toList();
   }
 }
