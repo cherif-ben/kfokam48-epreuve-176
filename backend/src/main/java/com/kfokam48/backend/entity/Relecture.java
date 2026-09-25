@@ -46,6 +46,12 @@ public class Relecture {
   @Column(name = "updated_at", nullable = false)
   private LocalDateTime updatedAt;
 
+  @Column(name = "rendue_at")
+  private LocalDateTime rendueAt;
+
+  @Column(name = "modifiee_at")
+  private LocalDateTime modifieeAt;
+
   protected Relecture() {
     // requis par JPA
   }
@@ -70,6 +76,24 @@ public class Relecture {
     this.note = note;
     this.commentaire = commentaire;
     this.statut = StatutRelecture.RENDUE;
+    this.rendueAt = horodatage;
+    this.updatedAt = horodatage;
+  }
+
+  /**
+   * EF10 / RG11 (Q10) — correction d'une note déjà rendue, avant la clôture de la session.
+   *
+   * <p>La première reddition ({@code rendueAt}) est préservée : elle atteste du moment où la note a
+   * été envoyée pour la première fois. Seul {@code modifieeAt} est mis à jour, pour tracer la
+   * dernière correction. Le statut reste {@code RENDUE} (RG12 : la note est définitive à la
+   * clôture, Q10 > Q15).
+   *
+   * @param horodatage horodatage de la correction.
+   */
+  public void corriger(Integer note, String commentaire, LocalDateTime horodatage) {
+    this.note = note;
+    this.commentaire = commentaire;
+    this.modifieeAt = horodatage;
     this.updatedAt = horodatage;
   }
 
@@ -103,5 +127,13 @@ public class Relecture {
 
   public LocalDateTime getUpdatedAt() {
     return updatedAt;
+  }
+
+  public LocalDateTime getRendueAt() {
+    return rendueAt;
+  }
+
+  public LocalDateTime getModifieeAt() {
+    return modifieeAt;
   }
 }
