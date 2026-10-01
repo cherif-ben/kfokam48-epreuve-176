@@ -8,13 +8,14 @@ import { Button } from "@/shared/components/Button";
 import { Alert } from "@/shared/components/Alert";
 import type { ApiError, Promotion, SessionOuverte } from "@/shared/types";
 import { formatDate } from "@/lib/utils";
+import { useI18n } from "@/lib/i18n/I18nProvider";
 
 /**
- * EF1 / RG1 — le formateur ouvre une session : le code de présence s'affiche en grand
- * avec sa durée de validité (issue de l'API, jamais recalculée côté front) et un
- * bouton « copier ». États loading et error gérés (F3).
+ * EF1 / RG1 — ouverture de session : le code s'affiche en grand (police mono, dictable),
+ * copie en un clic avec retour visuel animé.
  */
 export default function NouvelleSessionPage() {
+  const { t } = useI18n();
   const [promotions, setPromotions] = useState<Promotion[]>([]);
   const [titre, setTitre] = useState("");
   const [promotionId, setPromotionId] = useState(0);
@@ -28,8 +29,11 @@ export default function NouvelleSessionPage() {
     promotionApi
       .listerPromotions()
       .then(setPromotions)
-      .catch(() => setError({ code: "CHARGEMENT_IMPOSSIBLE", message: "Impossible de charger les promotions.", status: 0 }))
+      .catch(() =>
+        setError({ code: "CHARGEMENT_IMPOSSIBLE", message: t("nouvelle.loadError"), status: 0 }),
+      )
       .finally(() => setChargementPromotions(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const ouvrir = async (e: React.FormEvent) => {
@@ -42,7 +46,11 @@ export default function NouvelleSessionPage() {
       setSessionOuverte(session);
     } catch (err) {
       const apiErr = err as ApiError;
-      setError({ code: apiErr.code || "ERREUR_INCONNU", message: apiErr.message, status: apiErr.status ?? 0 });
+      setError({
+        code: apiErr.code || "ERREUR_INCONNU",
+        message: apiErr.message,
+        status: apiErr.status ?? 0,
+      });
     } finally {
       setLoading(false);
     }
@@ -59,39 +67,42 @@ export default function NouvelleSessionPage() {
     }
   };
 
-  return (
-    <div className="mx-auto flex max-w-xl flex-col gap-6 px-4 py-8">
-      <h1 className="text-2xl font-semibold text-zinc-900">Ouvrir une session</h1>
+  const inputClass =
+    "w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm transition-colors focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent";
 
-      <Card title="Nouvelle session">
+  return (
+    <div className="mx-auto flex max-w-xl flex-col gap-6">
+      <h1 className="animate-fade-in-up text-2xl font-bold tracking-tight">{t("nouvelle.title")}</h1>
+
+      <Card title={t("nouvelle.cardTitle")} className="animate-fade-in-up">
         <form onSubmit={ouvrir} className="flex flex-col gap-4">
           <div>
-            <label htmlFor="titre" className="mb-1 block text-sm font-medium text-zinc-700">
-              Titre de la session
+            <label htmlFor="titre" className="mb-1 block text-sm font-medium">
+              {t("form.title")}
             </label>
             <input
               id="titre"
               type="text"
               value={titre}
               onChange={(e) => setTitre(e.target.value)}
-              placeholder="Ex : Algorithmique — Séance 3"
-              className="w-full rounded-md border border-zinc-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              placeholder={t("form.titlePlaceholder")}
+              className={inputClass}
               required
             />
           </div>
           <div>
-            <label htmlFor="promotion" className="mb-1 block text-sm font-medium text-zinc-700">
-              Promotion
+            <label htmlFor="promotion" className="mb-1 block text-sm font-medium">
+              {t("form.promotion")}
             </label>
             <select
               id="promotion"
               value={promotionId}
               onChange={(e) => setPromotionId(Number(e.target.value))}
-              className="w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              className={inputClass}
               required
             >
               <option value={0}>
-                {chargementPromotions ? "Chargement…" : "Sélectionner une promotion"}
+                {chargementPromotions ? t("common.loading") : t("form.promotionPlaceholder")}
               </option>
               {promotions.map((p) => (
                 <option key={p.id} value={p.id}>
@@ -101,7 +112,7 @@ export default function NouvelleSessionPage() {
             </select>
           </div>
           <Button type="submit" disabled={loading || !titre.trim() || !promotionId}>
-            {loading ? "Ouverture…" : "Ouvrir la session"}
+            {loading ? t("nouvelle.opening") : t("nouvelle.open")}
           </Button>
         </form>
       </Card>
@@ -109,19 +120,39 @@ export default function NouvelleSessionPage() {
       {error && <Alert type="error" message={error.message} code={error.code} />}
 
       {sessionOuverte && (
-        <Card title="Session ouverte">
-          <div className="flex flex-col items-center gap-3 py-4">
-            <p className="text-sm text-zinc-500">Code de présence</p>
-            {/* ENF1 : lisible et dictable — grand format, police mono. */}
-            <p className="font-mono text-5xl font-bold tracking-[0.3em] text-zinc-900">
+        <Card className="animate-scale-in border-accent/30">
+          <div className="flex flex-col items-center gap-4 py-4">
+            <p className="text-sm font-medium uppercase tracking-wider text-muted">
+              {t("nouvelle.codeLabel")}
+            </p>
+            <p className="animate-scale-in rounded-xl bg-accent-soft px-8 py-4 font-mono text-5xl font-bold tracking-[0.3em] text-accent-strong dark:text-accent">
               {sessionOuverte.code}
             </p>
             <Button variant="secondary" onClick={copierCode} className="w-full sm:w-auto">
-              {copie ? "✓ Copié" : "Copier le code"}
+              {copie ? (
+                <>
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.5"
+                    className="h-4 w-4 text-success"
+                  >
+                    <path
+                      d="M20 6 9 17l-5-5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      className="animate-draw-check"
+                    />
+                  </svg>
+                  {t("nouvelle.copied")}
+                </>
+              ) : (
+                t("nouvelle.copy")
+              )}
             </Button>
-            <p className="text-center text-sm text-zinc-600">
-              Valable jusqu&apos;à <strong>{formatDate(sessionOuverte.expirationAt)}</strong>{" "}
-              (15 minutes après l&apos;ouverture — RG1).
+            <p className="text-center text-sm text-muted">
+              {t("nouvelle.validUntil", { date: formatDate(sessionOuverte.expirationAt) })}
             </p>
           </div>
         </Card>

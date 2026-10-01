@@ -7,15 +7,17 @@ import { relectureApi } from "@/features/relecture/api/relectureApi";
 import { Card } from "@/shared/components/Card";
 import { Button } from "@/shared/components/Button";
 import { Alert } from "@/shared/components/Alert";
+import { Badge } from "@/shared/components/Badge";
 import type { ApiError, Etudiant, Promotion, Relecture } from "@/shared/types";
+import { useI18n } from "@/lib/i18n/I18nProvider";
 
 /**
- * EF8 / RG5 — liste des relectures assignées (#30) : chaque ligne affiche le lien de l'exercice
- * (jamais le nom de l'auteur, RG6/Q8). EF9 / EF10 — formulaire de notation (#31) : note entière
- * 0-20 et commentaire. Aucune validation locale de la note (F3) : NOTE_INVALIDE,
- * AUTO_RELECTURE et RELECTURE_DEJA_RENDUE viennent du backend.
+ * EF8 / RG5 — relectures assignées (jamais le nom de l'auteur, RG6/Q8).
+ * EF9 / EF10 — notation : note entière 0-20 et commentaire. Aucune validation
+ * locale de la note (F3) : NOTE_INVALIDE, AUTO_RELECTURE, RELECTURE_DEJA_RENDUE viennent du backend.
  */
 export default function RelecturesPage() {
+  const { t } = useI18n();
   const [promotions, setPromotions] = useState<Promotion[]>([]);
   const [promotionId, setPromotionId] = useState(0);
   const [etudiants, setEtudiants] = useState<Etudiant[]>([]);
@@ -77,7 +79,7 @@ export default function RelecturesPage() {
     setChargement(true);
     try {
       await relectureApi.rendreRelecture(id, relecteurId, note, commentaire);
-      setSucces(`Relecture ${enCours === id ? "rendue" : ""} enregistrée (note ${note}/20).`);
+      setSucces(t("relectures.done", { note }));
       setEnCours(null);
       await charger(relecteurId);
     } catch (err) {
@@ -88,21 +90,24 @@ export default function RelecturesPage() {
     }
   };
 
-  return (
-    <div className="mx-auto flex max-w-xl flex-col gap-6 px-4 py-8">
-      <h1 className="text-2xl font-semibold text-zinc-900">Mes relectures</h1>
+  const inputClass =
+    "w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm transition-colors focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent";
 
-      <Card>
+  return (
+    <div className="mx-auto flex max-w-xl flex-col gap-6">
+      <h1 className="animate-fade-in-up text-2xl font-bold tracking-tight">{t("relectures.title")}</h1>
+
+      <Card className="animate-fade-in-up">
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
-            <label htmlFor="promotion" className="mb-1 block text-sm font-medium text-zinc-700">
-              Promotion
+            <label htmlFor="promotion" className="mb-1 block text-sm font-medium">
+              {t("form.promotion")}
             </label>
             <select
               id="promotion"
               value={promotionId}
               onChange={(e) => setPromotionId(Number(e.target.value))}
-              className="w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm"
+              className={inputClass}
             >
               {promotions.map((p) => (
                 <option key={p.id} value={p.id}>
@@ -112,16 +117,16 @@ export default function RelecturesPage() {
             </select>
           </div>
           <div>
-            <label htmlFor="relecteur" className="mb-1 block text-sm font-medium text-zinc-700">
-              Je suis…
+            <label htmlFor="relecteur" className="mb-1 block text-sm font-medium">
+              {t("relectures.whoAmI")}
             </label>
             <select
               id="relecteur"
               value={relecteurId}
               onChange={(e) => choisirRelecteur(Number(e.target.value))}
-              className="w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm"
+              className={inputClass}
             >
-              <option value={0}>Sélectionner…</option>
+              <option value={0}>{t("common.select")}</option>
               {etudiants.map((et) => (
                 <option key={et.id} value={et.id}>
                   {et.nom}
@@ -132,15 +137,15 @@ export default function RelecturesPage() {
         </div>
       </Card>
 
-      {chargement && <p className="text-sm text-zinc-500">Chargement…</p>}
+      {chargement && <p className="animate-pulse text-sm text-muted">{t("common.loading")}</p>}
       {error && <Alert type="error" message={error.message} code={error.code} />}
       {succes && <Alert type="success" message={succes} />}
 
       {relecteurId > 0 && !chargement && relectures.length === 0 && (
-        <p className="text-sm text-zinc-500">Aucune relecture assignée — profitez-en !</p>
+        <p className="text-sm text-muted">{t("relectures.empty")}</p>
       )}
 
-      <ul className="flex flex-col gap-3">
+      <ul className="stagger flex flex-col gap-3">
         {relectures.map((r) => (
           <li key={r.id}>
             <Card>
@@ -151,25 +156,28 @@ export default function RelecturesPage() {
                       href={r.lienExercice}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="block truncate text-sm font-medium text-blue-600 hover:underline"
+                      className="block truncate text-sm font-medium text-accent-strong hover:underline dark:text-accent"
                     >
-                      {r.lienExercice || "Exercice à relire"}
+                      {r.lienExercice || t("relectures.toReview")}
                     </a>
-                    <p className="text-xs text-zinc-500">
-                      Statut : <strong>{r.statut}</strong>
-                      {r.statut === "RENDUE" && r.note !== null && (
-                        <>
-                          {" "}
-                          — Note donnée : <strong>{r.note}/20</strong>
-                        </>
+                    <div className="mt-1.5 flex items-center gap-2 text-xs text-muted">
+                      {r.statut === "EN_ATTENTE" ? (
+                        <Badge tone="warning">{t("status.pending")}</Badge>
+                      ) : (
+                        <Badge tone="success">{t("status.rendered")}</Badge>
                       )}
-                    </p>
+                      {r.statut === "RENDUE" && r.note !== null && (
+                        <span className="rounded-full bg-accent-soft px-2 py-0.5 font-semibold text-accent-strong dark:text-accent">
+                          {t("relectures.givenGrade")} : {r.note}/20
+                        </span>
+                      )}
+                    </div>
                   </div>
                   <Button
                     variant={r.statut === "EN_ATTENTE" ? "primary" : "secondary"}
                     onClick={() => ouvrirFormulaire(r)}
                   >
-                    {r.statut === "EN_ATTENTE" ? "Relire" : "Corriger la note"}
+                    {r.statut === "EN_ATTENTE" ? t("relectures.review") : t("relectures.correct")}
                   </Button>
                 </div>
 
@@ -179,11 +187,11 @@ export default function RelecturesPage() {
                       e.preventDefault();
                       rendre(r.id);
                     }}
-                    className="flex flex-col gap-3 rounded-md border border-zinc-200 bg-zinc-50 p-3"
+                    className="animate-scale-in flex flex-col gap-3 rounded-lg border border-line bg-surface-muted p-4"
                   >
                     <div>
-                      <label htmlFor={`note-${r.id}`} className="mb-1 block text-sm font-medium text-zinc-700">
-                        Note (entière, 0–20)
+                      <label htmlFor={`note-${r.id}`} className="mb-1 block text-sm font-medium">
+                        {t("relectures.grade")}
                       </label>
                       {/* RG3 (Q9) : la plage est indicative — le backend reste arbitre (F3). */}
                       <input
@@ -194,32 +202,32 @@ export default function RelecturesPage() {
                         step={1}
                         value={note}
                         onChange={(e) => setNote(Number(e.target.value))}
-                        className="w-32 rounded-md border border-zinc-300 px-3 py-2 text-sm"
+                        className="w-28 rounded-lg border border-line bg-surface px-3 py-2 text-sm transition-colors focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
                         required
                       />
                     </div>
                     <div>
                       <label
                         htmlFor={`commentaire-${r.id}`}
-                        className="mb-1 block text-sm font-medium text-zinc-700"
+                        className="mb-1 block text-sm font-medium"
                       >
-                        Commentaire
+                        {t("relectures.comment")}
                       </label>
                       <textarea
                         id={`commentaire-${r.id}`}
                         value={commentaire}
                         onChange={(e) => setCommentaire(e.target.value)}
                         rows={3}
-                        className="w-full rounded-md border border-zinc-300 px-3 py-2 text-sm"
+                        className={inputClass}
                         required
                       />
                     </div>
                     <div className="flex gap-2">
                       <Button type="submit" disabled={chargement}>
-                        {chargement ? "Envoi…" : "Envoyer"}
+                        {chargement ? t("relectures.sending") : t("relectures.send")}
                       </Button>
                       <Button type="button" variant="secondary" onClick={() => setEnCours(null)}>
-                        Annuler
+                        {t("common.cancel")}
                       </Button>
                     </div>
                   </form>

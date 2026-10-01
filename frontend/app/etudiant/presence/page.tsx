@@ -8,14 +8,14 @@ import { FormulairePresence } from "@/features/presence/components/FormulairePre
 import { Card } from "@/shared/components/Card";
 import { Alert } from "@/shared/components/Alert";
 import type { Etudiant, Promotion } from "@/shared/types";
+import { useI18n } from "@/lib/i18n/I18nProvider";
 
 /**
- * EF2/EF3/EF4 — l'étudiant choisit son nom (Q1 : pas de mot de passe) dans sa promotion et saisit
- * le code. Les erreurs CODE_INCONNU, CODE_EXPIRE (expiration OU clôture — RG1/RG14) et
- * DEJA_PRESENT (RG12) sont affichées avec l'objet { code, message } de l'API. Aucune vérification
- * locale d'expiration (F3) : c'est le backend qui tranche.
+ * EF2/EF3/EF4 — l'étudiant choisit son nom (Q1 : pas de mot de passe) et saisit le code.
+ * Les erreurs API (CODE_INCONNU, CODE_EXPIRE, DEJA_PRESENT) sont affichées telles quelles (F3).
  */
 export default function PresencePage() {
+  const { t } = useI18n();
   const [promotions, setPromotions] = useState<Promotion[]>([]);
   const [promotionId, setPromotionId] = useState(0);
   const [etudiants, setEtudiants] = useState<Etudiant[]>([]);
@@ -40,20 +40,20 @@ export default function PresencePage() {
   }, [promotionId]);
 
   return (
-    <div className="mx-auto flex max-w-xl flex-col gap-6 px-4 py-8">
-      <h1 className="text-2xl font-semibold text-zinc-900">Marquer ma présence</h1>
+    <div className="mx-auto flex max-w-xl flex-col gap-6">
+      <h1 className="animate-fade-in-up text-2xl font-bold tracking-tight">{t("presence.title")}</h1>
 
-      <Card>
+      <Card className="animate-fade-in-up">
         <div className="flex flex-col gap-4">
           <div>
-            <label htmlFor="promotion" className="mb-1 block text-sm font-medium text-zinc-700">
-              Ma promotion
+            <label htmlFor="promotion" className="mb-1 block text-sm font-medium">
+              {t("presence.myPromotion")}
             </label>
             <select
               id="promotion"
               value={promotionId}
               onChange={(e) => setPromotionId(Number(e.target.value))}
-              className="w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              className="w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm transition-colors focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
             >
               {promotions.map((p) => (
                 <option key={p.id} value={p.id}>
@@ -71,14 +71,14 @@ export default function PresencePage() {
         </div>
       </Card>
 
-      {loading && <p className="text-sm text-zinc-500">Envoi en cours…</p>}
+      {loading && <p className="animate-pulse text-sm text-muted">{t("presence.sending")}</p>}
 
       {error && <Alert type="error" message={error.message} code={error.code} />}
 
       {presence && !error && (
         <Alert
           type="success"
-          message={`Présence enregistrée (source : ${presence.source}). À bientôt !`}
+          message={t("presence.success", { source: t(`source.${presence.source.toLowerCase()}` as "source.etudiant" | "source.formateur") })}
           code="PRESENCE_ENREGISTREE"
         />
       )}

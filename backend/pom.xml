@@ -53,6 +53,13 @@
       <scope>runtime</scope>
     </dependency>
 
+    <!-- Module Flyway pour PostgreSQL (requis depuis Flyway 10) -->
+    <dependency>
+      <groupId>org.flywaydb</groupId>
+      <artifactId>flyway-database-postgresql</artifactId>
+      <scope>runtime</scope>
+    </dependency>
+
     <!-- H2 pour les tests d'intégration (B6) -->
     <dependency>
       <groupId>com.h2database</groupId>
