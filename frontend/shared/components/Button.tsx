@@ -1,19 +1,18 @@
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: "primary" | "secondary" | "danger";
+  variant?: "primary" | "secondary" | "danger" | "ghost";
 }
 
 export function Button({ variant = "primary", className = "", ...props }: ButtonProps) {
-  const base = "rounded-md px-4 py-2 text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-1 disabled:opacity-50 disabled:cursor-not-allowed";
+  const base =
+    "inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-background active:scale-[0.97] disabled:pointer-events-none disabled:opacity-50";
   const variants = {
-    primary: "bg-blue-600 text-white hover:bg-blue-700 focus:ring-blue-500",
-    secondary: "border border-zinc-300 bg-white text-zinc-700 hover:bg-zinc-50 focus:ring-zinc-400",
-    danger: "bg-red-600 text-white hover:bg-red-700 focus:ring-red-500",
-  };
+    primary:
+      "bg-accent text-accent-fg shadow-sm hover:bg-accent-strong hover:shadow-md dark:text-white",
+    secondary:
+      "border border-line bg-surface text-foreground hover:bg-surface-muted",
+    danger: "bg-danger text-white shadow-sm hover:brightness-110",
+    ghost: "text-muted hover:bg-surface-muted hover:text-foreground",
+  } as const;
 
-  return (
-    <button
-      className={`${base} ${variants[variant]} ${className}`}
-      {...props}
-    />
-  );
+  return <button className={`${base} ${variants[variant]} ${className}`} {...props} />;
 }
